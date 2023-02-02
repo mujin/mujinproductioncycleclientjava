@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import static java.util.Map.entry;
 
 public class OrderManager {
-    
+
     private String _orderQueueIOName = null; // io name of order request queue
     private String _resultQueueIOName = null; // io name of order result queue
 
@@ -64,8 +64,8 @@ public class OrderManager {
     public void InitializeOrderPointers(long timeout) throws Exception {
         long startTime = System.currentTimeMillis();
 
-        // initialize order queue length from order queue        
-        _queueLength = ((JSONArray)_graphClient.GetControllerIOVariable(_orderQueueIOName)).length();
+        // initialize order queue length from order queue
+        _queueLength = ((JSONArray) _graphClient.GetControllerIOVariable(_orderQueueIOName)).length();
 
         // initialize order pointers
         boolean initializedOrderPointers = false;
@@ -138,7 +138,7 @@ public class OrderManager {
         Map<String, Object> resultEntry = null;
         if (this._resultReadPointer != resultWritePointer) {
             String orderResultQueueEntryIOName = this._resultQueueIOName + "[" + (this._resultReadPointer - 1) + "]";
-            resultEntry = ((JSONObject)this._graphClient.GetControllerIOVariable(orderResultQueueEntryIOName)).toMap();
+            resultEntry = ((JSONObject) this._graphClient.GetControllerIOVariable(orderResultQueueEntryIOName)).toMap();
             this._resultReadPointer = this._IncrementPointer(this._resultReadPointer);
 
             List<Map<String, Object>> variables = new ArrayList<Map<String, Object>>();

@@ -73,10 +73,10 @@ public class OneOrder {
                 entry("orderGroupId", "group1"),
                 // number of parts to pick
                 entry("orderNumber", 100),
-                entry("orderPartSizeX", 0),
-                entry("orderPartSizeY", 0),
+                entry("orderPartSizeX", 300),
+                entry("orderPartSizeY", 450),
                 // name of the pack formation
-                entry("orderPartSizeZ", 0),
+                entry("orderPartSizeZ", 250),
                 // 1-based index into the pack formation, 1 meaning the first box in the pack
                 entry("orderInputPartIndex", 0),
                 entry("orderPickContainerId", pickContainerId),

@@ -8,10 +8,10 @@ import java.net.URI;
 import java.net.HttpURLConnection;
 import java.util.Map;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.logging.Logger;
 
 import org.json.JSONObject;
