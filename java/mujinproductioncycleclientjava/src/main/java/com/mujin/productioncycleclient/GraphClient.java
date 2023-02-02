@@ -165,8 +165,7 @@ public class GraphClient {
             }
 
             @Override
-            public void onDisconnected(WebSocket webSocket, WebSocketFrame serverCloseFrame,
-                    WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
+            public void onDisconnected(WebSocket webSocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
                 log.info("Disconnected from the server");
             }
         }).connect();
@@ -234,8 +233,7 @@ public class GraphClient {
         // parse the response
         JSONObject response = new JSONObject(body);
         if (response.has("errors")) {
-            throw new Exception(
-                    "Failed to set io variables for " + ioNameValues + ". response: " + body);
+            throw new Exception("Failed to set io variables for " + ioNameValues + ". response: " + body);
         }
     }
 
@@ -294,14 +292,12 @@ public class GraphClient {
         // parse the response
         JSONObject response = new JSONObject(body);
         if (response.has("errors")) {
-            throw new Exception(
-                    "Failed to get io variables for IO name " + ioName + ". response: " + body);
+            throw new Exception("Failed to get io variables for IO name " + ioName + ". response: " + body);
         }
         JSONObject commandRobotBridges = response.getJSONObject("data").getJSONObject("CommandRobotBridges");
         Object parameterValue = commandRobotBridges.get("parametervalue");
         if (parameterValue == null) {
-            throw new Exception(
-                    "Failed to get io variables for IO name " + ioName + ". response: " + body);
+            throw new Exception("Failed to get io variables for IO name " + ioName + ". response: " + body);
         }
 
         return parameterValue;

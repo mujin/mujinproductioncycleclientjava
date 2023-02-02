@@ -122,8 +122,7 @@ public class OneOrder {
                 "moveOutLocation2Container"));
 
         // dequeue order results
-        CompletableFuture<Void> dequeueOrderResults = CompletableFuture
-                .runAsync(() -> this.DequeueOrderResults(orderManager));
+        CompletableFuture<Void> dequeueOrderResults = CompletableFuture.runAsync(() -> this.DequeueOrderResults(orderManager));
 
         // wait until all operations are complete
         CompletableFuture.allOf(handlePickLocationMove, handlePlaceLocationMove, dequeueOrderResults).get();
@@ -151,7 +150,7 @@ public class OneOrder {
         variables.add(Map.of("startProductionCycle", false));
         graphClient.SetControllerIOVariables(variables);
 
-        log.info("Started the production cycle");
+        log.info("Started production cycle");
     }
 
     /**
@@ -191,8 +190,7 @@ public class OneOrder {
      * @param moveOutIOName      IO name used to get and check for move-out request
      *                           for this location
      */
-    public void HandleLocationMove(GraphClient graphClient, String locationName, String containerId,
-            String containerIdIOName, String hasContainerIOName, String moveInIOName, String moveOutIOName) {
+    public void HandleLocationMove(GraphClient graphClient, String locationName, String containerId, String containerIdIOName, String hasContainerIOName, String moveInIOName, String moveOutIOName) {
 
         boolean hasContainer = (boolean) graphClient.GetSentIOMap().getOrDefault(hasContainerIOName, false);
         while (true) {
@@ -231,8 +229,7 @@ public class OneOrder {
     }
 
     public static void main(String[] args) {
-        ArgumentParser parser = ArgumentParsers.newFor("OneOrder").build().defaultHelp(true)
-                .description("Example code to run one order on production cycle");
+        ArgumentParser parser = ArgumentParsers.newFor("OneOrder").build().defaultHelp(true).description("Example code to run one order on production cycle");
         parser.addArgument("--url").setDefault("http://127.0.0.1").help("URL of the controller");
         parser.addArgument("--username").setDefault("mujin").help("Username to login with");
         parser.addArgument("--password").setDefault("mujin").help("Password to login with");

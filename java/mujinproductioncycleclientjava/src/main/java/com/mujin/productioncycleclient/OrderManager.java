@@ -107,8 +107,7 @@ public class OrderManager {
 
         // check if order queue is full
         if (_IncrementPointer(this._orderWritePointer) == orderReadPointer) {
-            throw new Exception(
-                    "Failed to queue new order entry because order queue is full (length=" + this._queueLength + ").");
+            throw new Exception("Failed to queue new order entry because order queue is full (length=" + this._queueLength + ").");
         }
 
         // queue order entry and increment order write pointer
@@ -130,8 +129,7 @@ public class OrderManager {
      * @throws Exception If cannot dequeue an order
      */
     public Map<String, Object> DequeueOrderResult() throws Exception {
-        int resultWritePointer = (int) this._graphClient.GetReceivedIOMap().getOrDefault(this._resultWritePointerIOName,
-                0);
+        int resultWritePointer = (int) this._graphClient.GetReceivedIOMap().getOrDefault(this._resultWritePointerIOName, 0);
 
         // reads next order result from order result queue and increment the order
         // result read pointer
@@ -142,8 +140,7 @@ public class OrderManager {
             this._resultReadPointer = this._IncrementPointer(this._resultReadPointer);
 
             List<Map<String, Object>> variables = new ArrayList<Map<String, Object>>();
-            variables.add(Map.ofEntries(
-                    entry(this._resultReadPointerIOName, this._resultReadPointer)));
+            variables.add(Map.ofEntries(entry(this._resultReadPointerIOName, this._resultReadPointer)));
             this._graphClient.SetControllerIOVariables(variables);
         }
         return resultEntry;
