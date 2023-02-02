@@ -99,8 +99,7 @@ public class OrderManager {
      * @throws Exception If cannot queue an order
      */
     public void QueueOrder(Map<String, Object> orderEntry) throws Exception {
-        // queue order to next entry in order queue and increment the order write
-        // pointer
+        // queue order to next entry in order queue and increment the order write pointer
         int orderReadPointer = (int) this._graphClient.GetReceivedIOMap().getOrDefault(this._orderReadPointerIOName, 0);
 
         // check if order queue is full
@@ -128,8 +127,7 @@ public class OrderManager {
     public Map<String, Object> DequeueOrderResult() throws Exception {
         int resultWritePointer = (int) this._graphClient.GetReceivedIOMap().getOrDefault(this._resultWritePointerIOName, 0);
 
-        // reads next order result from order result queue and increment the order
-        // result read pointer
+        // reads next order result from order result queue and increment the order result read pointer
         Map<String, Object> resultEntry = null;
         if (this._resultReadPointer != resultWritePointer) {
             String orderResultQueueEntryIOName = this._resultQueueIOName + "[" + (this._resultReadPointer - 1) + "]";
