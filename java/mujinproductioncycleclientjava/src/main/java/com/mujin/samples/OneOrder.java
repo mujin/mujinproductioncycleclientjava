@@ -176,19 +176,13 @@ public class OneOrder {
      * Handles state management of a location upon move-in and move-out request sent
      * from Mujin.
      * 
-     * @param graphClient        For checking Mujin IO state and setting location
-     *                           state IO
+     * @param graphClient        For checking Mujin IO state and setting location state IO
      * @param locationName       Name of this location for printing
-     * @param containerId        ID of the container to move in to this location.
-     *                           Should be consistent with the queued order
-     *                           information
-     * @param containerIdIOName  IO name used to set this location's container ID
-     *                           value
+     * @param containerId        ID of the container to move in to this location. Should be consistent with the queued order information
+     * @param containerIdIOName  IO name used to set this location's container ID value
      * @param hasContainerIOName IO name used to set this location's hasContainer
-     * @param moveInIOName       IO name used to get and check for move-in request
-     *                           for this location
-     * @param moveOutIOName      IO name used to get and check for move-out request
-     *                           for this location
+     * @param moveInIOName       IO name used to get and check for move-in request for this location
+     * @param moveOutIOName      IO name used to get and check for move-out request for this location
      */
     public void HandleLocationMove(GraphClient graphClient, String locationName, String containerId, String containerIdIOName, String hasContainerIOName, String moveInIOName, String moveOutIOName) {
 

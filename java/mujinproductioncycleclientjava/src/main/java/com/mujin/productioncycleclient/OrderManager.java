@@ -40,8 +40,7 @@ public class OrderManager {
     }
 
     /**
-     * Increments value for an order queue pointer. Wraps around length of order
-     * queue.
+     * Increments value for an order queue pointer. Wraps around length of order queue.
      * 
      * @param pointerValue Value of order queue pointer to be incremented
      * @return Incremented pointerValue
@@ -57,8 +56,7 @@ public class OrderManager {
     /**
      * Sends GraphQL query to get order queue pointers and order queue length
      * 
-     * @param timeout Number of seconds to wait for the order pointers to be
-     *                initialized
+     * @param timeout Number of seconds to wait for the order pointers to be initialized
      * @throws Exception If cannot initialize within the timeout period
      */
     public void InitializeOrderPointers(long timeout) throws Exception {
@@ -124,8 +122,7 @@ public class OrderManager {
     /**
      * Dequeues next result entry in order result queue.
      * 
-     * @return Order result information. Null if there is no result entry to be
-     *         read.
+     * @return Order result information. Null if there is no result entry to be read.
      * @throws Exception If cannot dequeue an order
      */
     public Map<String, Object> DequeueOrderResult() throws Exception {
