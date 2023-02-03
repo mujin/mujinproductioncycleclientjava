@@ -1,8 +1,6 @@
 package com.mujin.samples;
 
 import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import java.util.concurrent.CompletableFuture;
@@ -45,8 +43,7 @@ public class OneOrder {
      * @throws Exception
      */
     private void _ManageProductionCycle(GraphClient graphClient) throws Exception {
-        // ProductionCycleOrderManager to manage order pointers, queue orders, and read
-        // order results
+        // ProductionCycleOrderManager to manage order pointers, queue orders, and read order results
         OrderManager orderManager = new OrderManager(graphClient, 1);
 
         // initialize internal order queue pointers
@@ -56,38 +53,26 @@ public class OneOrder {
         this.StartProductionCycle(graphClient);
 
         // queue an order
-        // name of the pick location set up in Mujin controller
-        String pickLocationName = "location1";
-        // name of the place location set up in Mujin controller
-        String placeLocationName = "location2";
-        // unique id of the source container, usually barcode of the box, or agv id,
-        // must not be constant when pick container changes
-        String pickContainerId = "source0001";
-        // unique id of the destination pallet, usually barcode of the pallet, must not
-        // be constant when place contianer changes
-        String placeContainerId = "dest0001";
+        String pickLocationName = "location1"; // name of the pick location set up in Mujin controller
+        String placeLocationName = "location2"; // name of the place location set up in Mujin controller
+        String pickContainerId = "source0001"; // unique id of the source container, usually barcode of the box, or agv id, must not be constant when pick container changes
+        String placeContainerId = "dest0001"; // unique id of the destination pallet, usually barcode of the pallet, must not be constant when place contianer changes
 
         Map<String, Object> orderEntry = Map.ofEntries(
-                // unique id for this order
-                entry("orderUniqueId", "order" + (int) (System.currentTimeMillis() / 1000)),
-                // group multiple orders to same place container
-                entry("orderGroupId", "group1"),
-                // number of parts to pick
-                entry("orderNumber", 100),
+                entry("orderUniqueId", "order" + (int) (System.currentTimeMillis() / 1000)), // unique id for this order
+                entry("orderGroupId", "group1"), // group multiple orders to same place container
+                entry("orderNumber", 100), // number of parts to pick
                 entry("orderPartSizeX", 300),
                 entry("orderPartSizeY", 450),
-                // name of the pack formation
                 entry("orderPartSizeZ", 250),
-                // 1-based index into the pack formation, 1 meaning the first box in the pack
-                entry("orderInputPartIndex", 0),
+                entry("orderInputPartIndex", 0), // 1-based index into the pack formation, 1 meaning the first box in the pack
                 entry("orderPickContainerId", pickContainerId),
                 entry("orderPlaceContainerId", placeContainerId),
                 entry("orderPickLocationName", pickLocationName),
                 entry("orderPlaceLocationName", placeLocationName),
                 entry("orderScenarioId", "depallet"),
                 entry("orderType", "picking")
-        // NOTE: additional parameters may be required depending on the configurations
-        // on Mujin controller
+                // NOTE: additional parameters may be required depending on the configurations on Mujin controller
         );
         orderManager.QueueOrder(orderEntry);
         log.info("Queued order: " + orderEntry.toString());
@@ -96,31 +81,23 @@ public class OneOrder {
         CompletableFuture<Void> handlePickLocationMove = CompletableFuture.runAsync(() -> this.HandleLocationMove(
                 graphClient,
                 pickLocationName,
-                // use containerId matching the queued order request
-                pickContainerId,
-                // location1 here is example, depend on Mujin controller configuration
-                "location1ContainerId",
-                // location1 here is example, depend on Mujin controller configuration
-                "location1HasContainer",
-                // location1 here is example, depend on Mujin controller configuration
-                "moveInLocation1Container",
-                // location1 here is example, depend on Mujin controller configuration
-                "moveOutLocation1Container"));
+                pickContainerId, // use containerId matching the queued order request
+                "location1ContainerId", // location1 here is example, depend on Mujin controller configuration
+                "location1HasContainer", // location1 here is example, depend on Mujin controller configuration
+                "moveInLocation1Container", // location1 here is example, depend on Mujin controller configuration
+                "moveOutLocation1Container") // location1 here is example, depend on Mujin controller configuration
+        );
 
         // handle location move in and out for destination location
         CompletableFuture<Void> handlePlaceLocationMove = CompletableFuture.runAsync(() -> this.HandleLocationMove(
                 graphClient,
                 placeLocationName,
-                // use containerId matching the queued order request
-                placeContainerId,
-                // location2 here is example, depend on Mujin controller configuration
-                "location2ContainerId",
-                // location2 here is example, depend on Mujin controller configuration
-                "location2HasContainer",
-                // location2 here is example, depend on Mujin controller configuration
-                "moveInLocation2Container",
-                // location2 here is example, depend on Mujin controller configuration
-                "moveOutLocation2Container"));
+                placeContainerId, // use containerId matching the queued order request
+                "location2ContainerId", // location2 here is example, depend on Mujin controller configuration
+                "location2HasContainer", // location2 here is example, depend on Mujin controller configuration
+                "moveInLocation2Container", // location2 here is example, depend on Mujin controller configuration
+                "moveOutLocation2Container") // location2 here is example, depend on Mujin controller configuration
+        ); 
 
         // dequeue order results
         CompletableFuture<Void> dequeueOrderResults = CompletableFuture.runAsync(() -> this.DequeueOrderResults(orderManager));
