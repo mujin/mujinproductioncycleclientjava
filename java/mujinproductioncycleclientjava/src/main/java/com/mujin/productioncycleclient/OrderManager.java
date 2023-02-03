@@ -3,6 +3,7 @@ package com.mujin.productioncycleclient;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Logger;
 
 import org.json.JSONArray;
@@ -64,18 +65,17 @@ public class OrderManager {
 
         // initialize order queue length from order queue
         _queueLength = ((JSONArray) _graphClient.GetControllerIOVariable(_orderQueueIOName)).length();
+        log.info("Order queue length is " + _queueLength);
 
         // initialize order pointers
         boolean initializedOrderPointers = false;
         while (!initializedOrderPointers) {
-            Map<String, Object> receivedIoMap = _graphClient.GetReceivedIOMap();
+            Map<String, Object> receivedIOMap = _graphClient.GetReceivedIOMap();
 
-            receivedIoMap.toString();
-
-            _orderWritePointer = (int) receivedIoMap.getOrDefault(_orderWritePointerIOName, 0);
-            _resultReadPointer = (int) receivedIoMap.getOrDefault(_resultReadPointerIOName, 0);
-            int orderReadPointer = (int) receivedIoMap.getOrDefault(_orderReadPointerIOName, 0);
-            int resultWritePointer = (int) receivedIoMap.getOrDefault(_resultWritePointerIOName, 0);
+            _orderWritePointer = (int) receivedIOMap.getOrDefault(_orderWritePointerIOName, 0);
+            _resultReadPointer = (int) receivedIOMap.getOrDefault(_resultReadPointerIOName, 0);
+            int orderReadPointer = (int) receivedIOMap.getOrDefault(_orderReadPointerIOName, 0);
+            int resultWritePointer = (int) receivedIOMap.getOrDefault(_resultWritePointerIOName, 0);
 
             // verify order queue pointer values are valid
             initializedOrderPointers = true;
@@ -111,10 +111,9 @@ public class OrderManager {
         String orderQueueEntryIOName = this._orderQueueIOName + "[" + (this._orderWritePointer - 1) + "]";
         this._orderWritePointer = _IncrementPointer(this._orderWritePointer);
 
-        List<Map<String, Object>> variables = new ArrayList<Map<String, Object>>();
-        variables.add(Map.ofEntries(
-                entry(orderQueueEntryIOName, orderEntry),
-                entry(this._orderWritePointerIOName, this._orderWritePointer)));
+        Map<String, Object> variables = Map.ofEntries(
+            entry(orderQueueEntryIOName, orderEntry),
+            entry(this._orderWritePointerIOName, this._orderWritePointer));
         this._graphClient.SetControllerIOVariables(variables);
     }
 
@@ -134,8 +133,7 @@ public class OrderManager {
             resultEntry = ((JSONObject) this._graphClient.GetControllerIOVariable(orderResultQueueEntryIOName)).toMap();
             this._resultReadPointer = this._IncrementPointer(this._resultReadPointer);
 
-            List<Map<String, Object>> variables = new ArrayList<Map<String, Object>>();
-            variables.add(Map.ofEntries(entry(this._resultReadPointerIOName, this._resultReadPointer)));
+            Map<String, Object> variables = Map.ofEntries(entry(this._resultReadPointerIOName, this._resultReadPointer));
             this._graphClient.SetControllerIOVariables(variables);
         }
         return resultEntry;

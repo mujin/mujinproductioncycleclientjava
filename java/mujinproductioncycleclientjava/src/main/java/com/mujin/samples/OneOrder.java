@@ -3,6 +3,7 @@ package com.mujin.samples;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Logger;
 import java.util.concurrent.CompletableFuture;
 
@@ -136,9 +137,7 @@ public class OneOrder {
     public void StartProductionCycle(GraphClient graphClient) throws Exception {
         // start production cycle
         if (!(boolean) graphClient.GetSentIOMap().getOrDefault("isRunningProductionCycle", false)) {
-            List<Map<String, Object>> variables = new ArrayList<Map<String, Object>>();
-            variables.add(Map.of("startProductionCycle", true));
-            graphClient.SetControllerIOVariables(variables);
+            graphClient.SetControllerIOVariables(Map.of("startProductionCycle", true));
         }
 
         while (!(boolean) graphClient.GetSentIOMap().getOrDefault("isRunningProductionCycle", false)) {
@@ -146,9 +145,7 @@ public class OneOrder {
         }
 
         // set trigger off
-        List<Map<String, Object>> variables = new ArrayList<Map<String, Object>>();
-        variables.add(Map.of("startProductionCycle", false));
-        graphClient.SetControllerIOVariables(variables);
+        graphClient.SetControllerIOVariables(Map.of("startProductionCycle", false));
 
         log.info("Started production cycle");
     }
@@ -189,25 +186,25 @@ public class OneOrder {
         boolean hasContainer = (boolean) graphClient.GetSentIOMap().getOrDefault(hasContainerIOName, false);
         while (true) {
             try {
-                List<Map<String, Object>> ioNameValues = new ArrayList<Map<String, Object>>();
+                Map<String, Object> ioNameValues = new HashMap<String, Object>();
                 Boolean isMoveIn = (Boolean) graphClient.GetSentIOMap().getOrDefault(moveInIOName, false);
                 Boolean isMoveOut = (Boolean) graphClient.GetSentIOMap().getOrDefault(moveOutIOName, false);
 
                 // handle move in
                 if (isMoveIn && !hasContainer) {
                     // set container ID
-                    ioNameValues.add(Map.of(containerIdIOName, containerId));
+                    ioNameValues.put(containerIdIOName, containerId);
                     // hasContainer set True
-                    ioNameValues.add(Map.of(hasContainerIOName, true));
+                    ioNameValues.put(hasContainerIOName, true);
                     hasContainer = true;
                     log.info("Moved in container " + containerId + " to location " + locationName);
                 }
                 // handle move out
                 else if (isMoveOut && hasContainer) {
                     // reset container ID
-                    ioNameValues.add(Map.of(containerIdIOName, ""));
+                    ioNameValues.put(containerIdIOName, "");
                     // hasContainer set False
-                    ioNameValues.add(Map.of(hasContainerIOName, false));
+                    ioNameValues.put(hasContainerIOName, false);
                     hasContainer = false;
                     log.info("Moved out container " + containerId + " of location " + locationName);
                 }

@@ -63,9 +63,9 @@ public class GraphClient {
         }
         // convert to the required format
         Map<String, Object> result = new HashMap<String, Object>();
-        Object receivedIoValuesObject = this.robotBridgeState.getOrDefault("receivediovalues", new ArrayList<>());
-        List<List<Object>> receivedIoValues = (List<List<Object>>) receivedIoValuesObject;
-        for (List<Object> ioValue : receivedIoValues) {
+        Object receivedIOValuesObject = this.robotBridgeState.getOrDefault("receivediovalues", new ArrayList<>());
+        List<List<Object>> receivedIOValues = (List<List<Object>>) receivedIOValuesObject;
+        for (List<Object> ioValue : receivedIOValues) {
             String key = (String) ioValue.get(0);
             Object value = ioValue.get(1);
             result.put(key, value);
@@ -84,9 +84,9 @@ public class GraphClient {
         }
         // convert to the required format
         Map<String, Object> result = new HashMap<String, Object>();
-        Object sentIoValuesObject = this.robotBridgeState.getOrDefault("sentiovalues", new ArrayList<>());
-        List<List<Object>> sentIoValues = (List<List<Object>>) sentIoValuesObject;
-        for (List<Object> ioValue : sentIoValues) {
+        Object sentIOValuesObject = this.robotBridgeState.getOrDefault("sentiovalues", new ArrayList<>());
+        List<List<Object>> sentIOValues = (List<List<Object>>) sentIOValuesObject;
+        for (List<Object> ioValue : sentIOValues) {
             String key = (String) ioValue.get(0);
             Object value = ioValue.get(1);
             result.put(key, value);
@@ -174,20 +174,18 @@ public class GraphClient {
     /**
      * Sends GraphQL query to set IO variables to Mujin controller.
      * 
-     * @param ioNameValues List of Map<ioName, ioValue> for IO variables to set
+     * @param ioNameValues Map<ioName, ioValue> for IO variables to set
      * @throws Exception If cannot set IO variables
      */
-    public void SetControllerIOVariables(List<Map<String, Object>> ioNameValues) throws Exception {
+    public void SetControllerIOVariables(Map<String, Object> ioNameValues) throws Exception {
         String query = "mutation SetControllerIOVariables($parameters: Any!) {\n"
                 + " CommandRobotBridges(command: \"SetControllerIOVariables\", parameters: $parameters)\n"
                 + "}";
 
         // convert to the required format
         List<List<Object>> values = new ArrayList<>();
-        for (Map<String, Object> ioNameValue : ioNameValues) {
-            for (Map.Entry<String, Object> value : ioNameValue.entrySet()) {
-                values.add(Arrays.asList(value.getKey(), value.getValue()));
-            }
+        for (Map.Entry<String, Object> value : ioNameValues.entrySet()) {
+            values.add(Arrays.asList(value.getKey(), value.getValue()));
         }
 
         // prepare the request body
