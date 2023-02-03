@@ -200,7 +200,6 @@ public class GraphClient {
         // create a client
         HttpURLConnection connection = (HttpURLConnection) this._graphEndpoint.openConnection();
         connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/json");
 
         // add the headers
         this._headers.forEach((key, value) -> {
@@ -259,7 +258,6 @@ public class GraphClient {
         // create a client
         HttpURLConnection connection = (HttpURLConnection) this._graphEndpoint.openConnection();
         connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/json");
 
         // add the headers
         this._headers.forEach((key, value) -> {
