@@ -1,7 +1,10 @@
 package com.mujin.samples;
 
 import java.util.Map;
+import java.util.List;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.logging.Logger;
 import java.util.concurrent.CompletableFuture;
 
@@ -19,6 +22,8 @@ public class OneOrder {
 
     private static final Logger log = Logger.getLogger(OneOrder.class.getName());
 
+    private List<Map<String, Object>> _orderResults = Collections.synchronizedList(new ArrayList<>());
+    
     private void _RunMain(String url, String username, String password) throws Exception {
         // GraphQLClient to set and get controller io variables
         GraphClient graphClient = new GraphClient(url, username, password);
@@ -52,47 +57,26 @@ public class OneOrder {
         // start production cycle
         this.StartProductionCycle(graphClient);
 
-        // queue an order
-        String pickLocationName = "location1"; // name of the pick location set up in Mujin controller
-        String placeLocationName = "location2"; // name of the place location set up in Mujin controller
-        String pickContainerId = "source0001"; // unique id of the source container, usually barcode of the box, or agv id, must not be constant when pick container changes
-        String placeContainerId = "dest0001"; // unique id of the destination pallet, usually barcode of the pallet, must not be constant when place contianer changes
+        // pick and place locations in the robot cell
+        final String sourceContainerId = "source0001"; // unique id of the source container, usually barcode of the box, or agv id, must not be constant when pick container changes
+        final String destinationContainerId = "dest0001"; // unique id of the destination pallet, usually barcode of the pallet, must not be constant when place contianer changes
 
-        Map<String, Object> orderEntry = Map.ofEntries(
-                entry("orderUniqueId", "order" + (int) (System.currentTimeMillis() / 1000)), // unique id for this order
-                entry("orderGroupId", "group1"), // group multiple orders to same place container
-                entry("orderNumber", 100), // number of parts to pick
-                entry("orderPartSizeX", 300),
-                entry("orderPartSizeY", 450),
-                entry("orderPartSizeZ", 250),
-                entry("orderInputPartIndex", 0), // 1-based index into the pack formation, 1 meaning the first box in the pack
-                entry("orderPickContainerId", pickContainerId),
-                entry("orderPlaceContainerId", placeContainerId),
-                entry("orderPickLocationName", pickLocationName),
-                entry("orderPlaceLocationName", placeLocationName),
-                entry("orderScenarioId", "depallet"),
-                entry("orderType", "picking")
-                // NOTE: additional parameters may be required depending on the configurations on Mujin controller
-        );
-        orderManager.QueueOrder(orderEntry);
-        log.info("Queued order: " + orderEntry.toString());
-
-        // handle location move in and out for source location
+        // handle location move in and out for location 1
         CompletableFuture<Void> handlePickLocationMove = CompletableFuture.runAsync(() -> this.HandleLocationMove(
                 graphClient,
-                pickLocationName,
-                pickContainerId, // use containerId matching the queued order request
+                "location1",
+                sourceContainerId, // use containerId matching the queued order request
                 "location1ContainerId", // location1 here is example, depend on Mujin controller configuration
                 "location1HasContainer", // location1 here is example, depend on Mujin controller configuration
                 "moveInLocation1Container", // location1 here is example, depend on Mujin controller configuration
                 "moveOutLocation1Container") // location1 here is example, depend on Mujin controller configuration
         );
 
-        // handle location move in and out for destination location
+        // handle location move in and out for location 2
         CompletableFuture<Void> handlePlaceLocationMove = CompletableFuture.runAsync(() -> this.HandleLocationMove(
                 graphClient,
-                placeLocationName,
-                placeContainerId, // use containerId matching the queued order request
+                "location2",
+                destinationContainerId, // use containerId matching the queued order request
                 "location2ContainerId", // location2 here is example, depend on Mujin controller configuration
                 "location2HasContainer", // location2 here is example, depend on Mujin controller configuration
                 "moveInLocation2Container", // location2 here is example, depend on Mujin controller configuration
@@ -101,6 +85,157 @@ public class OneOrder {
 
         // dequeue order results
         CompletableFuture<Void> dequeueOrderResults = CompletableFuture.runAsync(() -> this.DequeueOrderResults(orderManager));
+
+
+        // 
+        // 1. Execute Depalletizing
+        // 
+
+        // queue a depalletizing order to productionQueue1Order
+        Map<String, Object> depalletizingOrderEntry = Map.ofEntries(
+            entry("orderUniqueId", "order_0001"), // unique id for this order
+            entry("orderGroupId", "group_0001"), // group multiple orders to same place container
+            entry("orderPickContainerId", sourceContainerId),
+            entry("orderPlaceContainerId", ""),
+            entry("orderScenarioId", "depallet"),
+            entry("orderType", "picking"),
+            entry("orderNumber", 100), // number of parts to pick
+            entry("orderInputPartIndex", 0), // 1-based index into the pack formation, 1 meaning the first box in the pack
+            entry("orderPickLocationName", "location1"),
+            entry("orderPlaceLocationName", "location2"),
+            entry("orderPartWeight", 0),
+            entry("orderPartSizeX", 0),
+            entry("orderPartSizeY", 0),
+            entry("orderPartSizeZ", 0)
+            // NOTE: additional parameters may be required depending on the configurations on Mujin controller
+        );
+        orderManager.QueueOrder(depalletizingOrderEntry);
+        log.info("Queued a depalletizing order: " + depalletizingOrderEntry.toString());
+
+
+        // 
+        // 2. Receive Depalletizing Result
+        // 
+
+        // receive the result from productionQueue1Result 
+        Map<String, Object> depalletizingOrderResult = this.WaitForOrderResult();
+        log.info("Received depalletizing order result: " + depalletizingOrderResult.toString());
+
+
+        // 
+        // 3. Request Pack Formation
+        // 
+
+        // set inputPackFormationHeader
+        Map<String, Object> inputPackFormationHeader = Map.ofEntries(
+            entry("inputPackFormationHeader", Map.ofEntries(
+                entry("packingUniqueId", "A0"),
+                entry("numPacked", 3)
+            ))
+        );
+        graphClient.SetControllerIOVariables(inputPackFormationHeader);
+        log.info("Set inputPackFormationHeader to: " + inputPackFormationHeader.toString());
+
+        // set inputPackFormationEntry
+        Map<String, Object> inputPackFormationEntry = Map.ofEntries(
+            entry("inputPackFormationEntry", List.of(
+                Map.ofEntries(
+                    entry("partFullSize", List.of(204, 223, 191)),
+                    entry("partWeight", 300),
+                    entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
+                ),
+                Map.ofEntries(
+                    entry("partFullSize", List.of(204, 223, 193)),
+                    entry("partWeight", 200),
+                    entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
+                ),
+                Map.ofEntries(
+                    entry("partFullSize", List.of(258, 363, 182)),
+                    entry("partWeight", 400),
+                    entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
+                )
+            ))
+        );
+        graphClient.SetControllerIOVariables(inputPackFormationEntry);
+        log.info("Set inputPackFormationEntry to: " + inputPackFormationEntry.toString());
+        
+        // queue a pack formation computation order to productionQueue1Order
+        Map<String, Object> packFormationRequestOrderEntry = Map.ofEntries(
+            entry("orderUniqueId", "order_0002"), // unique id for this order
+            entry("orderGroupId", "group_0002"), // group multiple orders to same place container
+            entry("orderPickContainerId", ""),
+            entry("orderPlaceContainerId", ""),
+            entry("orderScenarioId", "pack"),
+            entry("orderType", "packFormation"),
+            entry("orderNumber", 3), // number of parts to pack
+            entry("orderInputPartIndex", 0), // 1-based index into the pack formation, 1 meaning the first box in the pack
+            entry("orderPickLocationName", "location2"),
+            entry("orderPlaceLocationName", "location1"),
+            entry("orderPartWeight", 0),
+            entry("orderPartSizeX", 0),
+            entry("orderPartSizeY", 0),
+            entry("orderPartSizeZ", 0)
+            // NOTE: additional parameters may be required depending on the configurations on Mujin controller
+        );
+        orderManager.QueueOrder(packFormationRequestOrderEntry);
+        log.info("Queued a pack formation request order: " + packFormationRequestOrderEntry.toString());
+
+
+        // 
+        // 4. Receive Pack Formation Result        
+        // 
+
+        // read resultPackFormationHeader
+        Map<String, Object> resultPackFormationHeader = (Map<String, Object>)graphClient.GetControllerIOVariable("resultPackFormationHeader");
+        log.info("Read pack formation result header: " + resultPackFormationHeader.toString());
+
+        // read resultPackFormationEntry
+        Map<String, Object> resultPackFormationEntry = (Map<String, Object>)graphClient.GetControllerIOVariable("resultPackFormationEntry");
+        log.info("Read pack formation result entry: " + resultPackFormationEntry.toString());
+
+        // receive the order result from productionQueue1Result
+        Map<String, Object> packFormationRequestOrderResult = this.WaitForOrderResult();
+        log.info("Received pack formation request order result: " + packFormationRequestOrderResult.toString());
+
+        
+        // 
+        // 5. Execute Pack Formation
+        // 
+
+        // set orderPackFormationHeader
+        Map<String, Object> orderPackFormationHeader = (Map<String, Object>)resultPackFormationHeader.get("resultPackFormationHeader");
+        graphClient.SetControllerIOVariables(orderPackFormationHeader);
+        log.info("Set orderPackFormationHeader to: " + orderPackFormationHeader.toString());
+
+        // set orderPackFormationEntry
+        Map<String, Object> orderPackFormationEntry = (Map<String, Object>)resultPackFormationEntry.get("resultPackFormationEntry");
+        graphClient.SetControllerIOVariables(orderPackFormationEntry);
+        log.info("Set orderPackFormationEntry to: " + orderPackFormationEntry.toString());
+
+        // queue a pack formation execution order
+        Map<String, Object> packFormationExecutionOrderEntry = Map.ofEntries(
+            entry("orderUniqueId", "order_0003"), // unique id for this order
+            entry("orderGroupId", "group_0003"), // group multiple orders to same place container
+            entry("orderPickContainerId", sourceContainerId),
+            entry("orderPlaceContainerId", destinationContainerId),
+            entry("orderScenarioId", "pallet"),
+            entry("orderType", "picking"),
+            entry("orderNumber", 1), // number of parts to pick
+            entry("orderInputPartIndex", 1), // 1-based index into the pack formation, 1 meaning the first box in the pack
+            entry("orderPickLocationName", "location2"),
+            entry("orderPlaceLocationName", "location1"),
+            entry("orderPartWeight", 300.0),
+            entry("orderPartSizeX", 204.0),
+            entry("orderPartSizeY", 223.0),
+            entry("orderPartSizeZ", 191.0)
+            // NOTE: additional parameters may be required depending on the configurations on Mujin controller
+        );
+        orderManager.QueueOrder(packFormationExecutionOrderEntry);
+        log.info("Queued a pack formation execution order: " + packFormationExecutionOrderEntry.toString());
+
+        // receive the result from productionQueue1Result 
+        Map<String, Object> packFormationExecutionOrderResult = this.WaitForOrderResult();
+        log.info("Received pack formation execution order result: " + packFormationExecutionOrderResult.toString());
 
         // wait until all operations are complete
         CompletableFuture.allOf(handlePickLocationMove, handlePlaceLocationMove, dequeueOrderResults).get();
@@ -138,12 +273,31 @@ public class OneOrder {
                 // read the order result
                 Map<String, Object> resultEntry = orderManager.DequeueOrderResult();
                 if (resultEntry != null) {
-                    log.info("Read order result: " + resultEntry.toString());
+                    this._orderResults.add(resultEntry);
                 }
             } catch (Exception e) {
                 log.warning("Failed to dequeue order result: " + e.toString());
             }
         }
+    }
+
+    /**
+     * Blocks until an order result is ready
+     * 
+     * @return Order result
+     */
+    public Map<String, Object> WaitForOrderResult() {
+        Map<String, Object> orderResult = null;
+        while (orderResult == null) {
+            // wait for the depalletizing order result
+            synchronized (this._orderResults) {
+                int orderResultsSize = this._orderResults.size();
+                if (orderResultsSize > 0) {
+                    orderResult = this._orderResults.remove(this._orderResults.size() - 1);
+                }
+            }
+        }
+        return orderResult;
     }
 
     /**
@@ -159,7 +313,6 @@ public class OneOrder {
      * @param moveOutIOName      IO name used to get and check for move-out request for this location
      */
     public void HandleLocationMove(GraphClient graphClient, String locationName, String containerId, String containerIdIOName, String hasContainerIOName, String moveInIOName, String moveOutIOName) {
-
         boolean hasContainer = (boolean) graphClient.GetSentIOMap().getOrDefault(hasContainerIOName, false);
         while (true) {
             try {
