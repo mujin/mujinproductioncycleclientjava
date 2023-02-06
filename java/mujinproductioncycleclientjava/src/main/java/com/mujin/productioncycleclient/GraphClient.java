@@ -36,20 +36,23 @@ public class GraphClient {
     public GraphClient(String url, String username, String password) throws Exception {
         this._url = new URL(url);
         this._graphEndpoint = new URL(
-                this._url.getProtocol(),
-                this._url.getHost(),
-                this._url.getPort(),
-                "/api/v2/graphql",
-                null);
+            this._url.getProtocol(),
+            this._url.getHost(),
+            this._url.getPort(),
+            "/api/v2/graphql",
+            null
+        );
 
         byte[] encodedUsernamePassword = Base64.getEncoder().encode((username + ":" + password).getBytes());
         this._headers = Map.of(
-                "Content-Type", "application/json",
-                "Accept", "application/json",
-                "X-CSRFToken", "token",
-                "Authorization", "Basic " + new String(encodedUsernamePassword));
+            "Content-Type", "application/json",
+            "Accept", "application/json",
+            "X-CSRFToken", "token",
+            "Authorization", "Basic " + new String(encodedUsernamePassword)
+        );
         this._cookies = Map.of(
-                "csrftoken", "token");
+            "csrftoken", "token"
+        );
     }
 
     /**
@@ -102,24 +105,25 @@ public class GraphClient {
     public void SubscribeRobotBridgesState() throws Exception {
         // subscribes to IO changes on Mujin controller.
         String query = """
-                    subscription {
-                        SubscribeRobotBridgesState {
-                            sentiovalues
-                            receivediovalues
-                        }
-                    }
-                """;
+            subscription {
+                SubscribeRobotBridgesState {
+                    sentiovalues
+                    receivediovalues
+                }
+            }
+        """;
 
         // replace the url protocol
         URI websocketUri = this._graphEndpoint.toURI();
         websocketUri = new URI(
-                "ws",
-                websocketUri.getUserInfo(),
-                websocketUri.getHost(),
-                websocketUri.getPort(),
-                websocketUri.getPath(),
-                websocketUri.getQuery(),
-                websocketUri.getFragment());
+            "ws",
+            websocketUri.getUserInfo(),
+            websocketUri.getHost(),
+            websocketUri.getPort(),
+            websocketUri.getPath(),
+            websocketUri.getQuery(),
+            websocketUri.getFragment()
+        );
 
         // create the client for executing the subscription
         WebSocket webSocket = new WebSocketFactory().createSocket(websocketUri);
@@ -178,9 +182,11 @@ public class GraphClient {
      * @throws Exception If cannot set IO variables
      */
     public void SetControllerIOVariables(Map<String, Object> ioNameValues) throws Exception {
-        String query = "mutation SetControllerIOVariables($parameters: Any!) {\n"
-                + " CommandRobotBridges(command: \"SetControllerIOVariables\", parameters: $parameters)\n"
-                + "}";
+        String query = """
+            mutation SetControllerIOVariables($parameters: Any!) {
+                CommandRobotBridges(command: \"SetControllerIOVariables\", parameters: $parameters)
+            }
+        """;
 
         // convert to the required format
         List<List<Object>> values = new ArrayList<>();
@@ -242,9 +248,11 @@ public class GraphClient {
      * @throws Exception If cannot get the IO value
      */
     public Object GetControllerIOVariable(String ioName) throws Exception {
-        String query = "mutation GetControllerIOVariable($parameters: Any!) {\n"
-                + "  CommandRobotBridges(command: \"GetControllerIOVariable\", parameters: $parameters)\n"
-                + "}";
+        String query = """
+            mutation GetControllerIOVariable($parameters: Any!) {
+                CommandRobotBridges(command: \"GetControllerIOVariable\", parameters: $parameters)
+            }
+        """;
 
         // prepare the request body
         JSONObject parameters = new JSONObject();

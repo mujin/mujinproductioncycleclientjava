@@ -61,25 +61,25 @@ public class OrderManager {
         long startTime = System.currentTimeMillis();
 
         // initialize order queue length from order queue
-        _queueLength = ((JSONArray) _graphClient.GetControllerIOVariable(_orderQueueIOName)).length();
-        log.info("Order queue length is " + _queueLength);
+        this._queueLength = ((JSONArray) this._graphClient.GetControllerIOVariable(this._orderQueueIOName)).length();
+        log.info("Order queue length is " + this._queueLength);
 
         // initialize order pointers
         boolean initializedOrderPointers = false;
         while (!initializedOrderPointers) {
-            Map<String, Object> receivedIOMap = _graphClient.GetReceivedIOMap();
+            Map<String, Object> receivedIOMap = this._graphClient.GetReceivedIOMap();
 
-            _orderWritePointer = (int) receivedIOMap.getOrDefault(_orderWritePointerIOName, 0);
-            _resultReadPointer = (int) receivedIOMap.getOrDefault(_resultReadPointerIOName, 0);
-            int orderReadPointer = (int) receivedIOMap.getOrDefault(_orderReadPointerIOName, 0);
-            int resultWritePointer = (int) receivedIOMap.getOrDefault(_resultWritePointerIOName, 0);
+            this._orderWritePointer = (int) receivedIOMap.getOrDefault(this._orderWritePointerIOName, 0);
+            this._resultReadPointer = (int) receivedIOMap.getOrDefault(this._resultReadPointerIOName, 0);
+            int orderReadPointer = (int) receivedIOMap.getOrDefault(this._orderReadPointerIOName, 0);
+            int resultWritePointer = (int) receivedIOMap.getOrDefault(this._resultWritePointerIOName, 0);
 
             // verify order queue pointer values are valid
             initializedOrderPointers = true;
             for (int pointerValue : new int[] {
-                    _orderWritePointer, _resultReadPointer, orderReadPointer, resultWritePointer
+                    this._orderWritePointer, this._resultReadPointer, orderReadPointer, resultWritePointer
             }) {
-                if (pointerValue < 1 || pointerValue > _queueLength) {
+                if (pointerValue < 1 || pointerValue > this._queueLength) {
                     initializedOrderPointers = false;
                     if (System.currentTimeMillis() - startTime > TimeUnit.SECONDS.toMillis(timeout)) {
                         throw new Exception("Production cycle order queue pointers are invalid");
@@ -100,17 +100,18 @@ public class OrderManager {
         int orderReadPointer = (int) this._graphClient.GetReceivedIOMap().getOrDefault(this._orderReadPointerIOName, 0);
 
         // check if order queue is full
-        if (_IncrementPointer(this._orderWritePointer) == orderReadPointer) {
+        if (this._IncrementPointer(this._orderWritePointer) == orderReadPointer) {
             throw new Exception("Failed to queue new order entry because order queue is full (length=" + this._queueLength + ").");
         }
 
         // queue order entry and increment order write pointer
         String orderQueueEntryIOName = this._orderQueueIOName + "[" + (this._orderWritePointer - 1) + "]";
-        this._orderWritePointer = _IncrementPointer(this._orderWritePointer);
+        this._orderWritePointer = this._IncrementPointer(this._orderWritePointer);
 
         Map<String, Object> variables = Map.ofEntries(
             entry(orderQueueEntryIOName, orderEntry),
-            entry(this._orderWritePointerIOName, this._orderWritePointer));
+            entry(this._orderWritePointerIOName, this._orderWritePointer)
+        );
         this._graphClient.SetControllerIOVariables(variables);
     }
 
