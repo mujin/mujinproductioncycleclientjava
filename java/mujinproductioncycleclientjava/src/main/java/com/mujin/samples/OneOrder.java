@@ -46,6 +46,15 @@ public class OneOrder {
     }
 
     /**
+     * Generates a unique container ID each time called.
+     * 
+     * @return A unique container ID
+     */
+    private String _GenerateUniqueContainerID() {
+        return "c_" + System.currentTimeMillis();
+    }
+
+    /**
      * Starts production cycle and queues a single order. Manages the location
      * states for the order to be processed and dequeue the order result.
      * 
@@ -65,30 +74,28 @@ public class OneOrder {
         // start production cycle
         this.StartProductionCycle(graphClient);
 
-        // pick and place locations in the robot cell
-        final String sourceContainerId = "source0001"; // unique id of the source container, usually barcode of the box, or agv id, must not be constant when pick container changes
-        final String destinationContainerId = "dest0001"; // unique id of the destination pallet, usually barcode of the pallet, must not be constant when place contianer changes
-
         // handle location move in and out for location 1
+        // location1 here is example, depend on Mujin controller configuration
         CompletableFuture<Void> handlePickLocationMove = CompletableFuture.runAsync(() -> this.HandleLocationMove(
                 graphClient,
                 "location1",
-                sourceContainerId, // use containerId matching the queued order request
-                "location1ContainerId", // location1 here is example, depend on Mujin controller configuration
-                "location1HasContainer", // location1 here is example, depend on Mujin controller configuration
-                "moveInLocation1Container", // location1 here is example, depend on Mujin controller configuration
-                "moveOutLocation1Container") // location1 here is example, depend on Mujin controller configuration
+                "location1ContainerId",
+                "location1RequestContainerId",
+                "location1HasContainer",
+                "moveInLocation1Container",
+                "moveOutLocation1Container")
         );
 
         // handle location move in and out for location 2
+        // location2 here is example, depend on Mujin controller configuration
         CompletableFuture<Void> handlePlaceLocationMove = CompletableFuture.runAsync(() -> this.HandleLocationMove(
                 graphClient,
                 "location2",
-                destinationContainerId, // use containerId matching the queued order request
-                "location2ContainerId", // location2 here is example, depend on Mujin controller configuration
-                "location2HasContainer", // location2 here is example, depend on Mujin controller configuration
-                "moveInLocation2Container", // location2 here is example, depend on Mujin controller configuration
-                "moveOutLocation2Container") // location2 here is example, depend on Mujin controller configuration
+                "location2ContainerId", 
+                "location2RequestContainerId",
+                "location2HasContainer",
+                "moveInLocation2Container",
+                "moveOutLocation2Container")
         ); 
 
         // dequeue order results
@@ -102,7 +109,7 @@ public class OneOrder {
         Map<String, Object> depalletizingOrderEntry = Map.ofEntries(
             entry("orderUniqueId", "order_0001"), // unique id for this order
             entry("orderGroupId", "group_0001"), // group multiple orders to same place container
-            entry("orderPickContainerId", sourceContainerId),
+            entry("orderPickContainerId", this._GenerateUniqueContainerID()),
             entry("orderPlaceContainerId", ""),
             entry("orderScenarioId", "depallet"),
             entry("orderType", "picking"),
@@ -222,11 +229,12 @@ public class OneOrder {
         log.info("Set orderPackFormationEntry to: " + orderPackFormationEntry.toString());
 
         // queue a pack formation execution order
+        String packPlaceContainerID = this._GenerateUniqueContainerID(); // use same container id for place container for whole pack build
         Map<String, Object> packFormationExecutionOrderEntry = Map.ofEntries(
             entry("orderUniqueId", "order_0003"), // unique id for this order
             entry("orderGroupId", "group_0003"), // group multiple orders to same place container
-            entry("orderPickContainerId", sourceContainerId),
-            entry("orderPlaceContainerId", destinationContainerId),
+            entry("orderPickContainerId", this._GenerateUniqueContainerID()), // generate new container id for each item picked from source
+            entry("orderPlaceContainerId", packPlaceContainerID),
             entry("orderScenarioId", "pallet"),
             entry("orderType", "picking"),
             entry("orderNumber", 1), // number of parts to pick
@@ -317,39 +325,45 @@ public class OneOrder {
      * Handles state management of a location upon move-in and move-out request sent
      * from Mujin.
      * 
-     * @param graphClient        For checking Mujin IO state and setting location state IO
-     * @param locationName       Name of this location for printing
-     * @param containerId        ID of the container to move in to this location. Should be consistent with the queued order information
-     * @param containerIdIOName  IO name used to set this location's container ID value
-     * @param hasContainerIOName IO name used to set this location's hasContainer
-     * @param moveInIOName       IO name used to get and check for move-in request for this location
-     * @param moveOutIOName      IO name used to get and check for move-out request for this location
+     * @param graphClient              For checking Mujin IO state and setting location state IO
+     * @param locationName             Name of this location for printing
+     * @param containerIDIOName        IO name used to set this location's container ID value
+     * @param requestContainerIDIOName IO name used to get this location's requested container ID
+     * @param hasContainerIOName       IO name used to set this location's hasContainer
+     * @param moveInIOName             IO name used to get and check for move-in request for this location
+     * @param moveOutIOName            IO name used to get and check for move-out request for this location
      */
-    public void HandleLocationMove(GraphClient graphClient, String locationName, String containerId, String containerIdIOName, String hasContainerIOName, String moveInIOName, String moveOutIOName) {
+    public void HandleLocationMove(GraphClient graphClient, String locationName, String containerIDIOName, String requestContainerIDIOName, String hasContainerIOName, String moveInIOName, String moveOutIOName) {
         boolean hasContainer = (boolean) graphClient.GetSentIOMap().getOrDefault(hasContainerIOName, false);
         while (!this._done) {
             try {
                 Map<String, Object> ioNameValues = new HashMap<String, Object>();
                 Boolean isMoveIn = (Boolean) graphClient.GetSentIOMap().getOrDefault(moveInIOName, false);
                 Boolean isMoveOut = (Boolean) graphClient.GetSentIOMap().getOrDefault(moveOutIOName, false);
-
-                // handle move in
-                if (isMoveIn && !hasContainer) {
-                    // set container ID
-                    ioNameValues.put(containerIdIOName, containerId);
-                    // hasContainer set True
-                    ioNameValues.put(hasContainerIOName, true);
-                    hasContainer = true;
-                    log.info("Moved in container " + containerId + " to location " + locationName);
-                }
+                
                 // handle move out
-                else if (isMoveOut && hasContainer) {
+                if (isMoveOut && hasContainer) {
                     // reset container ID
-                    ioNameValues.put(containerIdIOName, "");
+                    ioNameValues.put(containerIDIOName, "");
                     // hasContainer set False
                     ioNameValues.put(hasContainerIOName, false);
                     hasContainer = false;
-                    log.info("Moved out container " + containerId + " of location " + locationName);
+                    log.info("Moved out container from location " + locationName);
+                }
+                // handle move in only when move out has finished or not requested
+                else if (isMoveIn && !hasContainer && !isMoveOut) {
+                    // get requested container ID for the move in
+                    String requestContainerID = (String) graphClient.GetSentIOMap().getOrDefault(requestContainerIDIOName, "");
+                    if (requestContainerID.length() == 0) {
+                        // generate a new container ID because specific ID was not requested by the system
+                        requestContainerID = this._GenerateUniqueContainerID();
+                    }
+                    // set container ID
+                    ioNameValues.put(containerIDIOName, requestContainerID);
+                    // hasContainer set True
+                    ioNameValues.put(hasContainerIOName, true);
+                    hasContainer = true;
+                    log.info("Moved in container " + requestContainerID + " to location " + locationName);
                 }
 
                 // set ioNameValues
