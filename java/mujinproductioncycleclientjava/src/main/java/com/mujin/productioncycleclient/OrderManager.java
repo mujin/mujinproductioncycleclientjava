@@ -2,12 +2,11 @@ package com.mujin.productioncycleclient;
 
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.concurrent.TimeUnit;
+import static java.util.Map.entry;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
-import java.util.concurrent.TimeUnit;
-import static java.util.Map.entry;
 
 public class OrderManager {
 
@@ -87,6 +86,18 @@ public class OrderManager {
                 }
             }
         }
+    }
+
+    /**
+     * Reset result read pointer to the result write pointer in order to clear the result queue
+     * 
+     */
+    public void ResetResultPointers() throws Exception {
+        // clears the result queue
+        Map<String, Object> receivedIOMap = this._graphClient.GetReceivedIOMap();
+        int resultWritePointer = (int) receivedIOMap.getOrDefault(this._resultWritePointerIOName, 0);
+        this._resultReadPointer = resultWritePointer;
+        this._graphClient.SetControllerIOVariables(Map.of(this._resultReadPointerIOName, resultWritePointer));
     }
 
     /**

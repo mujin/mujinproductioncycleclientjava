@@ -6,6 +6,10 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.logging.Logger;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Map.entry;
@@ -54,6 +58,9 @@ public class OneOrder {
         // initialize internal order queue pointers
         orderManager.InitializeOrderPointers(5);
 
+        // reset the result pointers
+        orderManager.ResetResultPointers();
+
         // start production cycle
         this.StartProductionCycle(graphClient);
 
@@ -85,7 +92,6 @@ public class OneOrder {
 
         // dequeue order results
         CompletableFuture<Void> dequeueOrderResults = CompletableFuture.runAsync(() -> this.DequeueOrderResults(orderManager));
-
 
         // 
         // 1. Execute Depalletizing
@@ -139,7 +145,7 @@ public class OneOrder {
 
         // set inputPackFormationEntry
         Map<String, Object> inputPackFormationEntry = Map.ofEntries(
-            entry("inputPackFormationEntry", List.of(
+            entry("inputPackFormationEntry[0:3]", List.of(
                 Map.ofEntries(
                     entry("partFullSize", List.of(204, 223, 191)),
                     entry("partWeight", 300),
@@ -187,12 +193,12 @@ public class OneOrder {
         // 
 
         // read resultPackFormationHeader
-        Map<String, Object> resultPackFormationHeader = (Map<String, Object>)graphClient.GetControllerIOVariable("resultPackFormationHeader");
+        Map<String, Object> resultPackFormationHeader = ((JSONObject)graphClient.GetControllerIOVariable("resultPackFormationHeader")).toMap();
         log.info("Read pack formation result header: " + resultPackFormationHeader.toString());
 
         // read resultPackFormationEntry
-        Map<String, Object> resultPackFormationEntry = (Map<String, Object>)graphClient.GetControllerIOVariable("resultPackFormationEntry");
-        log.info("Read pack formation result entry: " + resultPackFormationEntry.toString());
+        List<Object> resultPackFormationEntries = ((JSONArray)graphClient.GetControllerIOVariable("resultPackFormationEntry")).toList();
+        log.info("Read pack formation result entry: " + resultPackFormationEntries.toString());
 
         // receive the order result from productionQueue1Result
         log.info("Waiting for the pack formation request order result");
@@ -205,13 +211,13 @@ public class OneOrder {
         // 
 
         // set orderPackFormationHeader
-        Map<String, Object> orderPackFormationHeader = (Map<String, Object>)resultPackFormationHeader.get("resultPackFormationHeader");
-        graphClient.SetControllerIOVariables(orderPackFormationHeader);
-        log.info("Set orderPackFormationHeader to: " + orderPackFormationHeader.toString());
+        Map<String, Object> orderPackFormationHeader = (Map<String, Object>)resultPackFormationHeader;
+        graphClient.SetControllerIOVariables(Map.of("orderPackFormationHeader", orderPackFormationHeader));
+        log.info("Set orderPackFormationHeader to: " + orderPackFormationHeader.toString());    
 
         // set orderPackFormationEntry
-        Map<String, Object> orderPackFormationEntry = (Map<String, Object>)resultPackFormationEntry.get("resultPackFormationEntry");
-        graphClient.SetControllerIOVariables(orderPackFormationEntry);
+        Map<String, Object> orderPackFormationEntry = (Map<String, Object>)resultPackFormationEntries.get(0);
+        graphClient.SetControllerIOVariables(Map.of("orderPackFormationEntry", orderPackFormationEntry));
         log.info("Set orderPackFormationEntry to: " + orderPackFormationEntry.toString());
 
         // queue a pack formation execution order
