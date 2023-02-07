@@ -118,6 +118,7 @@ public class OneOrder {
         // 
 
         // receive the result from productionQueue1Result 
+        log.info("Waiting for the depalletizing order result");
         Map<String, Object> depalletizingOrderResult = this.WaitForOrderResult();
         log.info("Received depalletizing order result: " + depalletizingOrderResult.toString());
 
@@ -194,6 +195,7 @@ public class OneOrder {
         log.info("Read pack formation result entry: " + resultPackFormationEntry.toString());
 
         // receive the order result from productionQueue1Result
+        log.info("Waiting for the pack formation request order result");
         Map<String, Object> packFormationRequestOrderResult = this.WaitForOrderResult();
         log.info("Received pack formation request order result: " + packFormationRequestOrderResult.toString());
 
@@ -234,6 +236,7 @@ public class OneOrder {
         log.info("Queued a pack formation execution order: " + packFormationExecutionOrderEntry.toString());
 
         // receive the result from productionQueue1Result 
+        log.info("Waiting for the pack formation execution order result");
         Map<String, Object> packFormationExecutionOrderResult = this.WaitForOrderResult();
         log.info("Received pack formation execution order result: " + packFormationExecutionOrderResult.toString());
 
