@@ -107,12 +107,19 @@ public class OrderManager {
      * @throws Exception If cannot queue an order
      */
     public void QueueOrder(Map<String, Object> orderEntry) throws Exception {
+        long startTime = System.currentTimeMillis();
+
         // queue order to next entry in order queue and increment the order write pointer
         int orderReadPointer = (int) this._graphClient.GetReceivedIOMap().getOrDefault(this._orderReadPointerIOName, 0);
 
-        // check if order queue is full
-        if (this._IncrementPointer(this._orderWritePointer) == orderReadPointer) {
-            throw new Exception("Failed to queue new order entry because order queue is full (length=" + this._queueLength + ").");
+        // wait until the order queue becomes available
+        while (this._IncrementPointer(this._orderWritePointer) == orderReadPointer) {
+            orderReadPointer = (int) this._graphClient.GetReceivedIOMap().getOrDefault(this._orderReadPointerIOName, 0);
+            if (System.currentTimeMillis() - startTime > TimeUnit.SECONDS.toMillis(30)) {
+                // log periodically
+                log.info("Currently the order queue is full, waiting for the orders to complete");
+                startTime = System.currentTimeMillis();
+            }
         }
 
         // queue order entry and increment order write pointer

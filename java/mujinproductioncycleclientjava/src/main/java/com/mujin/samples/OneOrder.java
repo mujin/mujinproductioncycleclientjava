@@ -141,11 +141,32 @@ public class OneOrder {
         // 3. Request Pack Formation
         // 
 
+        // item information which we want to compute a pack for
+        List<Object> inputPackFormationEntries = List.of(
+            Map.ofEntries(
+                entry("partFullSize", List.of(204, 223, 191)),
+                entry("partWeight", 300),
+                entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
+            ),
+            Map.ofEntries(
+                entry("partFullSize", List.of(204, 223, 193)),
+                entry("partWeight", 200),
+                entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
+            ),
+            Map.ofEntries(
+                entry("partFullSize", List.of(258, 363, 182)),
+                entry("partWeight", 400),
+                entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
+            )
+        );
+        // number of items to pack
+        int numberOfItemsToPack = inputPackFormationEntries.size();
+
         // set inputPackFormationHeader
         Map<String, Object> inputPackFormationHeader = Map.ofEntries(
             entry("inputPackFormationHeader", Map.ofEntries(
                 entry("packingUniqueId", "A0"),
-                entry("numPacked", 3)
+                entry("numPacked", numberOfItemsToPack)
             ))
         );
         graphClient.SetControllerIOVariables(inputPackFormationHeader);
@@ -153,23 +174,7 @@ public class OneOrder {
 
         // set inputPackFormationEntry
         Map<String, Object> inputPackFormationEntry = Map.ofEntries(
-            entry("inputPackFormationEntry[0:3]", List.of(
-                Map.ofEntries(
-                    entry("partFullSize", List.of(204, 223, 191)),
-                    entry("partWeight", 300),
-                    entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
-                ),
-                Map.ofEntries(
-                    entry("partFullSize", List.of(204, 223, 193)),
-                    entry("partWeight", 200),
-                    entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
-                ),
-                Map.ofEntries(
-                    entry("partFullSize", List.of(258, 363, 182)),
-                    entry("partWeight", 400),
-                    entry("aabbPoseInContainer", List.of(1, 0, 0, 0, 0, 0, 0))
-                )
-            ))
+            entry("inputPackFormationEntry[0:" + numberOfItemsToPack + "]", inputPackFormationEntries)
         );
         graphClient.SetControllerIOVariables(inputPackFormationEntry);
         log.info("Set inputPackFormationEntry to: " + inputPackFormationEntry.toString());
@@ -182,7 +187,7 @@ public class OneOrder {
             entry("orderPlaceContainerId", ""),
             entry("orderScenarioId", "pack"),
             entry("orderType", "packFormation"),
-            entry("orderNumber", 3), // number of parts to pack
+            entry("orderNumber", numberOfItemsToPack), // number of parts to pack
             entry("orderInputPartIndex", 0), // 1-based index into the pack formation, 1 meaning the first box in the pack
             entry("orderPickLocationName", "location2"),
             entry("orderPlaceLocationName", "location1"),
@@ -201,11 +206,13 @@ public class OneOrder {
         // 
 
         // read resultPackFormationHeader
-        Map<String, Object> resultPackFormationHeader = ((JSONObject)graphClient.GetControllerIOVariable("resultPackFormationHeader")).toMap();
+        Map<String, Object> resultPackFormationHeader = ((JSONObject) graphClient.GetControllerIOVariable("resultPackFormationHeader")).toMap();
         log.info("Read pack formation result header: " + resultPackFormationHeader.toString());
+        // get number of items that were successfully computed in the pack
+        int numberOfItemsPacked = (int) resultPackFormationHeader.getOrDefault("numPacked", 0);
 
         // read resultPackFormationEntry
-        List<Object> resultPackFormationEntries = ((JSONArray)graphClient.GetControllerIOVariable("resultPackFormationEntry")).toList();
+        List<Object> resultPackFormationEntries = ((JSONArray) graphClient.GetControllerIOVariable("resultPackFormationEntry")).toList();
         log.info("Read pack formation result entry: " + resultPackFormationEntries.toString());
 
         // receive the order result from productionQueue1Result
@@ -219,41 +226,48 @@ public class OneOrder {
         // 
 
         // set orderPackFormationHeader
-        Map<String, Object> orderPackFormationHeader = (Map<String, Object>)resultPackFormationHeader;
+        Map<String, Object> orderPackFormationHeader = (Map<String, Object>) resultPackFormationHeader;
         graphClient.SetControllerIOVariables(Map.of("orderPackFormationHeader", orderPackFormationHeader));
         log.info("Set orderPackFormationHeader to: " + orderPackFormationHeader.toString());    
 
         // set orderPackFormationEntry
-        Map<String, Object> orderPackFormationEntry = (Map<String, Object>)resultPackFormationEntries.get(0);
-        graphClient.SetControllerIOVariables(Map.of("orderPackFormationEntry", orderPackFormationEntry));
-        log.info("Set orderPackFormationEntry to: " + orderPackFormationEntry.toString());
+        graphClient.SetControllerIOVariables(Map.of("orderPackFormationEntry", resultPackFormationEntries));
+        log.info("Set orderPackFormationEntry to: " + resultPackFormationEntries.toString());
+        
+        // use same container id for place container for whole pack build
+        String packPlaceContainerID = this._GenerateUniqueContainerID(); 
+        // queue pack formation execution orders
+        for (int index = 0; index < numberOfItemsPacked; index++) {
+            Map<String, Object> resultPackFormationEntry = (Map<String, Object>) resultPackFormationEntries.get(index);
+            ArrayList partFullSize = (ArrayList) resultPackFormationEntry.get("partFullSize");
 
-        // queue a pack formation execution order
-        String packPlaceContainerID = this._GenerateUniqueContainerID(); // use same container id for place container for whole pack build
-        Map<String, Object> packFormationExecutionOrderEntry = Map.ofEntries(
-            entry("orderUniqueId", "order_0003"), // unique id for this order
-            entry("orderGroupId", "group_0003"), // group multiple orders to same place container
-            entry("orderPickContainerId", this._GenerateUniqueContainerID()), // generate new container id for each item picked from source
-            entry("orderPlaceContainerId", packPlaceContainerID),
-            entry("orderScenarioId", "pallet"),
-            entry("orderType", "picking"),
-            entry("orderNumber", 1), // number of parts to pick
-            entry("orderInputPartIndex", 1), // 1-based index into the pack formation, 1 meaning the first box in the pack
-            entry("orderPickLocationName", "location2"),
-            entry("orderPlaceLocationName", "location1"),
-            entry("orderPartWeight", 300.0),
-            entry("orderPartSizeX", 204.0),
-            entry("orderPartSizeY", 223.0),
-            entry("orderPartSizeZ", 191.0)
-            // NOTE: additional parameters may be required depending on the configurations on Mujin controller
-        );
-        orderManager.QueueOrder(packFormationExecutionOrderEntry);
-        log.info("Queued a pack formation execution order: " + packFormationExecutionOrderEntry.toString());
+            Map<String, Object> packFormationExecutionOrderEntry = Map.ofEntries(
+                entry("orderUniqueId", "order_0003_" + index), // unique id for this order
+                entry("orderGroupId", "group_0003"), // group multiple orders to same place container
+                entry("orderPickContainerId", this._GenerateUniqueContainerID()), // generate new container id for each item picked from source
+                entry("orderPlaceContainerId", packPlaceContainerID),
+                entry("orderScenarioId", "pallet"),
+                entry("orderType", "picking"),
+                entry("orderNumber", 1), // number of parts to pick
+                entry("orderInputPartIndex", index+1), // 1-based index into the pack formation, 1 meaning the first box in the pack
+                entry("orderPickLocationName", "location2"),
+                entry("orderPlaceLocationName", "location1"),
+                entry("orderPartWeight", resultPackFormationEntry.get("partWeight")),
+                entry("orderPartSizeX", partFullSize.get(0)),
+                entry("orderPartSizeY", partFullSize.get(1)),
+                entry("orderPartSizeZ", partFullSize.get(2))
+                // NOTE: additional parameters may be required depending on the configurations on Mujin controller
+            );
+            orderManager.QueueOrder(packFormationExecutionOrderEntry);
+            log.info("Queued a pack formation execution order: " + packFormationExecutionOrderEntry.toString());
+        }
 
-        // receive the result from productionQueue1Result 
-        log.info("Waiting for the pack formation execution order result");
-        Map<String, Object> packFormationExecutionOrderResult = this.WaitForOrderResult();
-        log.info("Received pack formation execution order result: " + packFormationExecutionOrderResult.toString());
+        // receive the results from productionQueue1Result 
+        log.info("Waiting for the pack formation execution order results");
+        for (int index = 0; index < numberOfItemsPacked; index++) {
+            Map<String, Object> packFormationExecutionOrderResult = this.WaitForOrderResult();
+            log.info("Received pack formation execution order result: " + packFormationExecutionOrderResult.toString());    
+        }
 
         // mark as done
         this._done = true;
