@@ -26,6 +26,7 @@ public class OneOrder {
 
     private static final Logger log = Logger.getLogger(OneOrder.class.getName());
 
+    private boolean _done = false;
     private List<Map<String, Object>> _orderResults = Collections.synchronizedList(new ArrayList<>());
     
     private void _RunMain(String url, String username, String password) throws Exception {
@@ -246,6 +247,9 @@ public class OneOrder {
         Map<String, Object> packFormationExecutionOrderResult = this.WaitForOrderResult();
         log.info("Received pack formation execution order result: " + packFormationExecutionOrderResult.toString());
 
+        // mark as done
+        this._done = true;
+
         // wait until all operations are complete
         CompletableFuture.allOf(handlePickLocationMove, handlePlaceLocationMove, dequeueOrderResults).get();
     }
@@ -277,7 +281,7 @@ public class OneOrder {
      * @param orderManager For dequeuing order results and managing order pointers
      */
     public void DequeueOrderResults(OrderManager orderManager) {
-        while (true) {
+        while (!this._done) {
             try {
                 // read the order result
                 Map<String, Object> resultEntry = orderManager.DequeueOrderResult();
@@ -323,7 +327,7 @@ public class OneOrder {
      */
     public void HandleLocationMove(GraphClient graphClient, String locationName, String containerId, String containerIdIOName, String hasContainerIOName, String moveInIOName, String moveOutIOName) {
         boolean hasContainer = (boolean) graphClient.GetSentIOMap().getOrDefault(hasContainerIOName, false);
-        while (true) {
+        while (!this._done) {
             try {
                 Map<String, Object> ioNameValues = new HashMap<String, Object>();
                 Boolean isMoveIn = (Boolean) graphClient.GetSentIOMap().getOrDefault(moveInIOName, false);
